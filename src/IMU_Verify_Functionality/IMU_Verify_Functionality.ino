@@ -1,11 +1,11 @@
 /****************************************************************
- *             ACCELEROMETER Theta CALCULATION TEST             *
+ *             ACCELEROMETER Phi CALCULATION TEST             *
  * This code will calculate the angle of the IMU from the       *
- * vertical position (positive X points down.)  This code will  *
- * verify that my hand calculations are correct.  Data will be  *
- * read from the accelerometer.  The final implementation will  *
- * require data from the gyroscope as well.  Gyroscope data     *
- * will be examined in another program.                         *
+ * vertical position (positive X points down.)  This code       *
+ * verifies that my hand calculations are correct.  Data will   *
+ * be read from the accelerometer.  The final implementation    *
+ * will require data from the gyroscope as well.  Gyroscope     *
+ * data will be examined in another program.                         *
  ***************************************************************/
 
 #include "SparkFunLSM6DS3.h"
@@ -25,9 +25,9 @@ float gyroBiasZ = 0;
 double InitialAx = 0;
 double InitialAy = 0;
 double InitialAz = 0;
-double prevBeta = 0;
 double prevTheta = 0;
-double prevZeta = 0;
+double prevPhi = 0;
+double prevPsi = 0;
 bool isFirstPass = true;
 
 float toDegrees(double radian){
@@ -44,12 +44,12 @@ void printXYZ(float x, float y, float z){
   Serial.print("\t\t");
 }
 
-void printCalculatedAccelAngles(double Beta, double Theta, double Zeta){
-  Serial.print(Beta, PRECISION);
-  Serial.print("\t");
+void printCalculatedAccelAngles(double Theta, double Phi, double Psi){
   Serial.print(Theta, PRECISION);
   Serial.print("\t");
-  Serial.print(Zeta, PRECISION);
+  Serial.print(Phi, PRECISION);
+  Serial.print("\t");
+  Serial.print(Psi, PRECISION);
   Serial.print("\t\t");
 }
 
@@ -114,9 +114,9 @@ void setup() {
   float yAvg_acc = ySum_acc/i;
   float zAvg_acc = zSum_acc/i;
 
-  InitialAx = toDegrees(atan2(yAvg_acc, zAvg_acc)); //Beta: YZ plane, rotation about X axis
-  InitialAy = toDegrees(atan2(zAvg_acc, xAvg_acc)); //Theta: XZ plane, rotation about Y axis
-  InitialAz = toDegrees(atan2(xAvg_acc, yAvg_acc)); //Zeta: XY plane, rotation about Z axis
+  InitialAx = toDegrees(atan2(yAvg_acc, zAvg_acc)); //Theta: YZ plane, rotation about X axis
+  InitialAy = toDegrees(atan2(zAvg_acc, xAvg_acc)); //Phi: XZ plane, rotation about Y axis
+  InitialAz = toDegrees(atan2(xAvg_acc, yAvg_acc)); //Psi: XY plane, rotation about Z axis
 
   /*Serial.println();
   Serial.println("xAvg\tyAvg\tzAvg");
@@ -136,15 +136,15 @@ void setup() {
   delay(1000);
   
   Serial.println("ACCELEROMETER\t\t\tCALC'D ACCEL ANGLES\t\tGYRO ANGULAR VELOCITY\t\tCORRECTED ANGLES");
-  Serial.println("X\tY\tZ\t\tBeta\tTheta\tZeta\t\tBeta/s\tTheta/s\tZeta/s\t\tBeta\tTheta\tZeta");
+  Serial.println("X\tY\tZ\t\tTheta\tPhi\tPsi\t\tTheta/s\tPhi/s\tPsi/s\t\tTheta\tPhi\tPsi");
 }
 
 int i = 0;
 void loop() {
   if(isFirstPass){
-    prevBeta = InitialAx;
-    prevTheta = InitialAy;
-    prevZeta = InitialAz;
+    prevTheta = InitialAx;
+    prevPhi = InitialAy;
+    prevPsi = InitialAz;
     isFirstPass = false;
   }
   
@@ -156,26 +156,26 @@ void loop() {
   float y_gyro = IMU.readFloatGyroY() - gyroBiasY; //angular velocity about y axis
   float z_gyro = IMU.readFloatGyroZ() - gyroBiasZ; //angular velocity about z axis
 
-  double Ax_acc = toDegrees(atan2(y_acc, z_acc)); //Beta: YZ plane, rotation about X axis //atan2() returns in radians
-  double Ay_acc = toDegrees(atan2(z_acc, x_acc)); //Theta: XZ plane, rotation about Y axis
-  double Az_acc = toDegrees(atan2(x_acc, y_acc)); //Zeta: XY plane, rotation about Z axis
+  double Ax_acc = toDegrees(atan2(y_acc, z_acc)); //Theta: YZ plane, rotation about X axis //atan2() returns in radians
+  double Ay_acc = toDegrees(atan2(z_acc, x_acc)); //Phi: XZ plane, rotation about Y axis
+  double Az_acc = toDegrees(atan2(x_acc, y_acc)); //Psi: XY plane, rotation about Z axis
 
-  double Beta = WEIGHT_GYRO*(prevBeta + x_gyro*dt) + WEIGHT_ACCEL*(Ax_acc);
-  double Theta = WEIGHT_GYRO*(prevTheta + y_gyro*dt) + WEIGHT_ACCEL*(Ay_acc);
-  double Zeta = WEIGHT_GYRO*(prevZeta + z_gyro*dt) + WEIGHT_ACCEL*(Az_acc);
+  double Theta = WEIGHT_GYRO*(prevTheta + x_gyro*dt) + WEIGHT_ACCEL*(Ax_acc);
+  double Phi = WEIGHT_GYRO*(prevPhi + y_gyro*dt) + WEIGHT_ACCEL*(Ay_acc);
+  double Psi = WEIGHT_GYRO*(prevPsi + z_gyro*dt) + WEIGHT_ACCEL*(Az_acc);
 
-  if(i%5 == 0){
+  if(i%10 == 0){
     printXYZ(x_acc, y_acc, z_acc);
     printCalculatedAccelAngles(Ax_acc, Ay_acc, Az_acc);
     printXYZ(x_gyro, y_gyro, z_gyro);
-    printXYZ(Beta, Theta, Zeta);
+    printXYZ(Theta, Phi, Psi);
     Serial.println();
   }
   i++;
   
-  prevBeta = Beta;
   prevTheta = Theta;
-  prevZeta = Zeta;
+  prevPhi = Phi;
+  prevPsi = Psi;
   
   delay(dt * S_TO_MS);
 }
