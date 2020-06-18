@@ -2,11 +2,11 @@
 #include "DRV8835MotorShield.h"
 #include "math.h"
 
-#define GYRO_WEIGHT .996
-#define ACCEL_WEIGHT .004
-#define ZERO_ANGLE 88.35
+#define GYRO_WEIGHT .991
+#define ACCEL_WEIGHT .009
+#define ZERO_ANGLE 88.886
 #define PRECISION 3
-#define DEBUG true
+#define DEBUG false
 #define LEDPIN 13
 #define INTEGRAL_SATURATION 400
 #define S_TO_MS 1000
@@ -14,8 +14,7 @@
 LSM6DS3 IMU;
 DRV8835MotorShield motors;
 
-
-float dt = .005; //in seconds
+float dt = .002; //in seconds
 
 float gyroBiasX = 0;
 float initialAx = 0;
@@ -23,14 +22,13 @@ float thetaPrev = 0;
 float errorPrev = 0;
 float errorSum = 0;
 
-float kp = 20;
-float ki = 150;
-float kd = .5;
+float kp = 33;
+float ki = 495;
+float kd = .569;
 
 float radToDeg(float radian);
 float getAngle();
-float filterSignal(float sample);
-void updateFilterInputs(float sample);
+
 
 void setup() {
   Serial.begin(9600);
@@ -45,7 +43,7 @@ void setup() {
   float ySum_accel = 0; 
   float zSum_accel = 0;
   int i = 0;
-  for(i; i < 300; i++){
+  for(i; i < 400; i++){
     xSum_gyro += IMU.readFloatGyroX();
     ySum_accel += IMU.readFloatAccelY();
     zSum_accel += IMU.readFloatAccelZ();
@@ -55,14 +53,14 @@ void setup() {
   float accelAvgY = ySum_accel/(i + 1);
   float accelAvgZ = zSum_accel/(i + 1);
 
-  thetaPrev = radToDeg(atan2(accelAvgY, accelAvgZ));
+  thetaPrev = atan2(accelAvgY, accelAvgZ)*(180/PI);
 
   if(DEBUG){
     Serial.print("GyroBiasX: ");
     Serial.println(gyroBiasX);
     Serial.print("Avg Angle X: ");
     Serial.println(thetaPrev);
-    Serial.println();
+    Serial.println("");
   }
 
   motors.flipM1(true);
@@ -91,8 +89,8 @@ void loop() {
   motors.setSpeeds(u, u);
 
   if(i%20 == 0 && DEBUG){
-    Serial.print("Error: ");
-    Serial.println(error, PRECISION);
+    Serial.print("Theta: ");
+    Serial.println(theta, PRECISION);
     Serial.print("P: ");
     Serial.print(kp*error);
     Serial.print("\tI: ");
@@ -101,6 +99,7 @@ void loop() {
     Serial.print(kd*((error-errorPrev)/dt));
     Serial.print("\tu: ");
     Serial.println(u);
+    Serial.println("");
   }
   i++;
   thetaPrev = theta;
@@ -115,10 +114,7 @@ float radToDeg(float radian){
 float getAngle(){
   float y_acc = IMU.readFloatAccelY(); //returns value in G's
   float z_acc = IMU.readFloatAccelZ();
-
-  float x_angle_deg = radToDeg(atan2(y_acc, z_acc)); //returns angle in degrees
-  
+  float x_angle_deg = atan2(y_acc, z_acc)*(180/PI);
   float x_gyro = IMU.readFloatGyroX() - gyroBiasX; //returns angular velocity about x axis
-
   return GYRO_WEIGHT*(thetaPrev + x_gyro*dt) + ACCEL_WEIGHT*x_angle_deg;
 }
